@@ -1,0 +1,34 @@
+---
+eventstore_version: 21.10.2
+eventstore_db: /data/eventstore
+eventstore_cluster_size: 3
+eventstore_cluster_dns: esdb-cluster.gravt.prod
+eventstore_int_ip: "{{ ansible_eth0.ipv4.address }}"
+eventstore_ext_ip: "{{ ansible_eth0.ipv4.address }}"
+eventstore_config_file: "{{ playbook_dir }}/templates/eventstore.conf.j2"
+eventstore_admin_password: "{{ vault_eventstore_admin_password }}"
+eventstore_admin_new_password: "{{ vault_eventstore_admin_new_password }}"
+eventstore_generate_node_certitificate: true
+eventstore_ca_cert: "{{ vault_eventstore_ca_cert }}"
+eventstore_ca_key: "{{ vault_eventstore_ca_key }}"
+eventstore_node_cert_dns_names:
+  - localhost
+  - esdb-cluster.gravt.prod
+
+datadog_api_key: "{{ vault_datadog_api_key }}"
+datadog_enabled: true
+
+datadog_config:
+  cmd_port: 5111
+  expvar_port: 5112
+  tags:
+    - env:prod
+    - role:eventstore
+  logs_enabled: true
+datadog_checks:
+  logs:
+    logs:
+      - type: file
+        path: "/var/log/eventstore/**/*.log"
+        service: eventstore
+        source: eventstore

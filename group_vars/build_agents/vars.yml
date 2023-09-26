@@ -1,0 +1,11 @@
+---
+az_devops_accesstoken: "{{ vault_az_devops_accesstoken }}"
+az_devops_accountname: sharegate
+az_devops_project_name: Sharegate.Gravt
+az_devops_deployment_group_name: Gravt
+az_devops_agent_pool_name: Gravt
+dotnet_package: dotnet-sdk-6.0
+nodejs_version: 16.x
+helm_version: 'v3.8.2'
+helm_platform: linux
+helm_arch: amd64

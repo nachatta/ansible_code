@@ -1,0 +1,119 @@
+- hosts: all
+  become: true
+  serial: 1
+  roles:
+    - eventstore
+    - datadog
+    - unattended-upgrades
+
+  vars:
+    - max_open_files: 706196
+    - stop_evenstore_first: false
+
+  pre_tasks:
+    - name: Stop service eventstore, if started
+      ansible.builtin.service:
+        name: eventstore
+        state: stopped
+      when:
+      - not ansible_check_mode
+      - stop_evenstore_first
+
+    - name: isntall python-apt
+      apt:
+        name: python-apt
+        update_cache: yes
+        state: latest
+
+    - name: Install cURL
+      apt:
+        name: curl
+        update_cache: yes
+
+    - name: Set max open files
+      sysctl:
+        name: fs.file-max
+        value: "{{ max_open_files | int }}"
+        state: present
+
+    - name: Ensure eventstore group exists
+      ansible.builtin.group:
+        name: eventstore
+        state: present
+
+    - name: Ensure eventstore user exists
+      ansible.builtin.user:
+        name: eventstore
+        state: present
+
+    - name: Create eventstore ca cert folder
+      ansible.builtin.file:
+        path: /etc/eventstore/certs/ca
+        state: directory
+        mode: 0777
+
+    - name: Add eventstore ca cert files
+      ansible.builtin.copy:
+        content: "{{ item.content }}"
+        dest: "{{ item.dest }}"
+        owner: eventstore
+        group: eventstore
+        mode: '0600'
+      no_log: true
+      loop:
+        - { content: "{{ eventstore_ca_key }}", dest: /etc/eventstore/certs/ca/ca.key }
+        - { content: "{{ eventstore_ca_cert }}", dest: /etc/eventstore/certs/ca/ca.crt }
+
+    - name: Trust eventstore CA cert
+      ansible.builtin.copy:
+        content: "{{ eventstore_ca_cert }}"
+        dest: /usr/local/share/ca-certificates/eventstore-ca.crt
+        mode: '0644'
+      notify:
+        - update trusted ca
+
+    - name: Extract offline scavenge tool
+      ansible.builtin.unarchive:
+        src: files/offline-scavenger.linux-x64.tar.gz
+        dest: /usr/local/bin
+        mode: '0555'
+
+  tasks:
+    - name: Check eventstore systemd service exists
+      stat:
+        path: /lib/systemd/system/eventstore.service
+      register: eventstore_systemd_service
+
+    - name: Set eventstore service LimitNOFILE
+      ansible.builtin.lineinfile:
+        path: /lib/systemd/system/eventstore.service
+        regexp: '^LimitNOFILE'
+        line: "LimitNOFILE={{ max_open_files }}"
+      when: eventstore_systemd_service.stat.exists
+      notify:
+        - restart eventstore
+
+    - name: Install eventstore datadog integration
+      shell: datadog-agent integration install -t datadog-eventstore==1.1.0 -r
+      become: true
+
+    - name: Copy eventstore datadog integration conf
+      template:
+        src: templates/datadog_eventstore-conf.j2
+        dest: /etc/datadog-agent/conf.d/eventstore.d/conf.yaml
+
+    - name: Restart datadog-agent for eventstore integration
+      service:
+        name: datadog-agent
+        state: restarted
+      when: not ansible_check_mode
+
+  handlers:
+    - name: update trusted ca
+      shell: /usr/sbin/update-ca-certificates
+
+    - name: restart eventstore
+      ansible.builtin.systemd:
+        name: eventstore
+        daemon_reload: yes
+        state: restarted

@@ -1,0 +1,39 @@
+---
+# Paths
+Db: {{ eventstore_db }}
+
+# Cluster configuration
+ClusterGossipPort: 2114
+ClusterSize: {{ eventstore_cluster_size }}
+ClusterDns: {{ eventstore_cluster_dns }}
+GossipTimeoutMs: 2000
+GossipIntervalMs: 10000
+PrepareTimeoutMs: 10000
+CommitTimeoutMs: 10000
+
+# Certificates configuration
+CertificateFile: /etc/eventstore/certs/node/node.crt
+CertificatePrivateKeyFile: /etc/eventstore/certs/node/node.key
+TrustedRootCertificatesPath: /etc/eventstore/certs/ca
+
+# Network configuration
+IntIp: {{ eventstore_ext_ip }}
+ExtIp: {{ eventstore_int_ip }}
+IntTcpPort: 1111
+ExtTcpPort: 1112
+HttpPort: 2114
+EnableExternalTcp: true
+EnableAtomPubOverHTTP: true
+IntTcpHeartbeatTimeout: 2000
+IntTcpHeartbeatInterval: 5000
+ExtTcpHeartbeatTimeout: 5000
+ExtTcpHeartbeatInterval: 10000
+
+# Projections configuration
+RunProjections: All
+
+# Performance tweaking
+SkipIndexVerify: True
+SkipDbVerify: True
+ReaderThreadsCount: 12
+InitializationThreads: 100

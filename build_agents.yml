@@ -1,0 +1,85 @@
+- hosts: all
+  become: true
+  serial: 1
+  roles:
+    - kubernetes-helm
+    - dotnet-core
+    - nodejs
+    - docker
+    - az-devops-agent
+    - unattended-upgrades
+    - azure-cli
+    - pwsh
+    - chrome
+
+  tasks:
+    - name: Install jq tool
+      apt:
+        name: jq
+        update_cache: yes
+
+    - name: Add mongo apt key
+      apt_key:
+        keyserver: hkp://keyserver.ubuntu.com:80
+        id: 9DA31620334BD75D9DCB49F368818C72E52529D4
+
+    - name: Add mongo repo
+      apt_repository:
+        repo: deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu xenial/mongodb-org/4.0 multiverse
+        state: present
+
+    - name: Install mongodb cli
+      apt:
+        name: mongodb-org
+        update_cache: yes
+
+    - name: Add permissions to "{{ az_devops_agent_user }}"
+      user:
+        name: "{{ az_devops_agent_user }}"
+        groups:
+          - sudo
+          - docker
+
+    - name: Allow "{{ az_devops_agent_user }}" user to have passwordless sudo
+      lineinfile:
+        dest: /etc/sudoers
+        state: present
+        regexp: "^{{ az_devops_agent_user }}"
+        line: "{{ az_devops_agent_user }} ALL=(ALL) NOPASSWD: ALL"
+        validate: "visudo -cf %s"
+      notify: restart az-devops-agent
+
+    - name: Build service name
+      command: "systemd-escape vsts.agent.{{ az_devops_accountname }}.{{ az_devops_agent_pool_name }}.{{ ansible_hostname }}.service"
+      become: true
+      register: svc_name
+      changed_when: false
+
+    - name: Ensure LimitNOFILE
+      ansible.builtin.lineinfile:
+        path: "/etc/systemd/system/{{ svc_name.stdout }}"
+        regexp: '^LimitNOFILE'
+        insertafter: '^\[Service\]'
+        line: LimitNOFILE=706196
+      notify:
+        - Reload agent service
+
+    - name: Update all packages to their latest version
+      apt:
+        name: "*"
+        state: latest
+        
+    - name: Upgrade the OS (apt-get dist-upgrade)
+      apt:
+        upgrade: dist
+          
+    - name: Remove dependencies that are no longer required
+      apt:
+        autoremove: yes
+
+  handlers:
+  - name: Reload agent service
+    ansible.builtin.systemd:
+      state: restarted
+      daemon_reload: yes
+      name: "{{ svc_name.stdout }}"

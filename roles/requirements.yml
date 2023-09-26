@@ -1,0 +1,40 @@
+---
+roles:
+  - src: jnv.unattended-upgrades
+    name: unattended-upgrades
+
+  - src: gsoft.azure_devops_agent
+    name: az-devops-agent
+
+  - src: gsoft.eventstore
+    name: eventstore
+
+  - src: geerlingguy.nodejs
+    name: nodejs
+
+  - src: geerlingguy.git
+    name: git
+
+  - src: ocha.dotnet-core
+    name: dotnet-core
+
+  - src: huxoll.azure-cli
+    name: azure-cli
+
+  - src: brentwg.powershell
+    name: pwsh
+
+  - src: geerlingguy.docker
+    name: docker
+
+  - src: undergreen.mongodb
+    name: mongodb
+
+  - src: datadog.datadog
+    name: datadog
+
+  - src: pixelart.chrome
+    name: chrome
+
+  - src: geerlingguy.helm
+    name: kubernetes-helm
